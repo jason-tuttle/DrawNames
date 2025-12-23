@@ -1,3 +1,4 @@
+
 //
 //  ContentView.swift
 //  DrawNames
@@ -7,18 +8,33 @@
 
 import SwiftUI
 
-struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
+struct MatchPair: Identifiable {
+    let id = UUID()
+    let giver: String
+    let receiver: String
 }
 
-#Preview {
-    ContentView()
+struct ContentView: View {
+    var body: some View {
+        TabView {
+            DrawNamesView()
+                .tabItem {
+                    Label("Pair Up", systemImage: "person.line.dotted.person.fill")
+                }
+            
+            RollDiceView()
+                .tabItem {
+                    Label("Roll Dice", systemImage: "dice")
+                }
+            
+            // Draw straws?
+
+            // Draft/Pick order w/ snake-option
+
+            SpinnerView()
+                .tabItem {
+                    Label("Spin!", systemImage: "gearshape.arrow.trianglehead.2.clockwise.rotate.90")
+                }
+        }
+    }
 }
