@@ -72,7 +72,7 @@ struct DrawNamesView: View {
             LinearGradient(colors: [.yellow, .orange, .pink], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
             VStack {
-                Text("Randomly assigns pairs of names as you add them!").font(Font.subheadline).foregroundStyle(.secondary)
+                Text("Randomly assigns pairs of names as you add them!").font(Font.subheadline).foregroundStyle(.primary)
                 ScrollView {
                     Grid(verticalSpacing: 8) {
                         GridRow {

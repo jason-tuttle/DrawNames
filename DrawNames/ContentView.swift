@@ -27,14 +27,20 @@ struct ContentView: View {
                     Label("Roll Dice", systemImage: "dice")
                 }
             
-            // Draw straws?
-
-            // Draft/Pick order w/ snake-option
-
             SpinnerView()
                 .tabItem {
                     Label("Spin!", systemImage: "gearshape.arrow.trianglehead.2.clockwise.rotate.90")
                 }
         }
     }
+}
+
+// Draw straws?
+
+// Coin Flip
+
+// Timer / hourglass
+
+#Preview {
+    ContentView()
 }
