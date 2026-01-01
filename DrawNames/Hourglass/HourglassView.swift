@@ -17,11 +17,12 @@ struct HourglassView: View {
         }()
     
     var body: some View {
-        ZStack {
-            Color(.black)
-            SpriteView(scene: scene, options: [.allowsTransparency])
-                .ignoresSafeArea()
-            
+        VStack {
+            ZStack {
+                Color(.black)
+                    .ignoresSafeArea()
+                SpriteView(scene: scene, options: [.allowsTransparency])
+            }
             Button("Flip!") {
                 scene.setSandDamping(2.0)
                 scene.flipHourglass()
