@@ -35,13 +35,14 @@ struct SpinnerView: View {
         
         Spacer()
         
+        Text("Choose the number of spaces on the spinner:")
         Picker("Segments", selection: $sections) {
             ForEach(SegmentOptions, id: \.self) { option in
                 Text("\(option)")
             }
         }
         .pickerStyle(.segmented)
-        .padding()
+        .padding([.horizontal, .bottom])
     }
 }
 

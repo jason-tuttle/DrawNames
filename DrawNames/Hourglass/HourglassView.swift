@@ -16,6 +16,10 @@ struct HourglassView: View {
             return scene
         }()
     
+    @State private var duration: Int = 60
+    
+    let durationOptions = [30: "30 Seconds", 60: "1 Minute", 180: "3 Minutes", 300: "5 Minutes"]
+    
     var body: some View {
         VStack {
             ZStack {
@@ -23,6 +27,14 @@ struct HourglassView: View {
                     .ignoresSafeArea()
                 SpriteView(scene: scene, options: [.allowsTransparency])
             }
+            
+            Picker("Time", selection: $duration) {
+                ForEach(durationOptions.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                    Text(value)
+                }
+            }
+            
+            
             Button("Flip!") {
                 scene.setSandDamping(2.0)
                 scene.flipHourglass()

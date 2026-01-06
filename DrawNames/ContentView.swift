@@ -27,10 +27,10 @@ struct ContentView: View {
                     Label("Roll Dice", systemImage: "dice")
                 }
             
-//            SpinnerView()
-//                .tabItem {
-//                    Label("Spin!", systemImage: "gearshape.arrow.trianglehead.2.clockwise.rotate.90")
-//                }
+            SpinnerView()
+                .tabItem {
+                    Label("Spin!", systemImage: "gearshape.arrow.trianglehead.2.clockwise.rotate.90")
+                }
             
             HourglassView()
                 .tabItem {

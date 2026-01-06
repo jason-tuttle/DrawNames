@@ -9,6 +9,9 @@ import Foundation
 import SpriteKit
 
 final class SandGrain: SKShapeNode {
+    var restTime: TimeInterval = 0
+    var isFrozen = false
+    
     init(radius: CGFloat) {
         super.init()
         
@@ -21,10 +24,10 @@ final class SandGrain: SKShapeNode {
         
         physicsBody = SKPhysicsBody(circleOfRadius: radius)
         physicsBody?.mass = radius * 0.002
-        physicsBody?.friction = 0.3
+        physicsBody?.friction = 0.1
         physicsBody?.restitution = 0.05
-        physicsBody?.linearDamping = 0.25
-        physicsBody?.angularDamping = 0.25
+        physicsBody?.linearDamping = 0.15
+        physicsBody?.angularDamping = 0.05
         physicsBody?.allowsRotation = true
         physicsBody?.usesPreciseCollisionDetection = false
     }

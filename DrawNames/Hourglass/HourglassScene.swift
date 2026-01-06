@@ -9,17 +9,37 @@ import Foundation
 import SpriteKit
 
 class HourglassScene: SKScene {
-//    let hourglass: HourglassShape = HourglassShape(neckWidthRatio: 0.05, curvature: 0.01, verticalInsetRatio: 0.05, horizontalInsetRatio: 0.30)
-    let hourglass: HourglassShape = HourglassShape()
+    let hourglass: HourglassShape = HourglassShape(neckWidthRatio: 0.025, curvature: 0.01, verticalInsetRatio: 0.08, horizontalInsetRatio: 0.30)
     
     let worldNode = SKNode()
     let sandNode = SKNode()
     
     private var hourglassNode: SKNode?
     private var outlineNode: SKShapeNode?
+    private var timeNode = SKLabelNode(fontNamed: "Chalkduster")
     
     private var isEmittingSand: Bool = false
     var sandTimer: Timer?
+    
+    // grain params
+    let velocityThreshold: CGFloat = 3.0
+    let settleDuration: TimeInterval = 0.25  // seconds
+    let recycleY: CGFloat = 8
+    var spawnYRange: ClosedRange<CGFloat> {
+        return (outlineNode!.frame.midY) + 25.0...(outlineNode!.frame.midY + 50.0)
+    }
+    var spawnXRange: ClosedRange<CGFloat> {
+        let leftWallX = outlineNode!.frame.midX - outlineNode!.frame.maxX * 0.05
+        let rightWallX = outlineNode!.frame.midX + outlineNode!.frame.maxX * 0.05
+        return leftWallX...rightWallX
+    }
+    
+    var timerDuration: TimeInterval = 60
+    var elapsedTime: TimeInterval = 0
+    
+    var recycleCutoff: TimeInterval {
+        timerDuration - 10   // last ~18 seconds resolve naturally
+    }
     
     func gravityVector(for angle: CGFloat, magnitude: CGFloat) -> CGVector {
         CGVector(
@@ -40,10 +60,17 @@ class HourglassScene: SKScene {
         addChild(worldNode)
         
         worldNode.addChild(sandNode)
-
+        
         rebuildHourglass()
         
-//        preloadSand(count: 300)
+        timeNode = SKLabelNode(fontNamed: "Chalkduster")
+        timeNode.text = String("\(timerDuration - elapsedTime) seconds")
+        timeNode.horizontalAlignmentMode = .left
+        timeNode.position = CGPoint(x: 16, y: 16)
+        
+        addChild(timeNode)
+        
+        preloadSand(count: 500)
     }
     
     override func didChangeSize(_ oldSize: CGSize) {
@@ -59,17 +86,53 @@ class HourglassScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
-        let radius = CGFloat.random(in: 1.2...1.6)
-        let grain = SandGrain(radius: radius)
-        
-        grain.position = location
-        sandNode.addChild(grain)
+        print("Touched at \(location)")        
     }
     
-//    override func update(_ currentTime: TimeInterval) {
-//        cleanupSand()
-//    }
-//    
+    override func didSimulatePhysics() {
+        let dt: TimeInterval = 1.0 / 60.0
+        elapsedTime += isEmittingSand ? dt : 0.0
+        timeNode.text = String("\(Int(timerDuration - elapsedTime)) seconds")
+
+        for case let grain as SandGrain in sandNode.children {
+
+            guard let body = grain.physicsBody,
+                  body.isDynamic,
+                  !grain.isFrozen else { continue }
+
+            let velocity = hypot(body.velocity.dx, body.velocity.dy)
+
+            if velocity < velocityThreshold {
+                let grainY = Float(grain.position.y)
+                guard grainY < 20.0 else { continue }
+
+                grain.restTime += dt
+
+                if grain.restTime >= settleDuration {
+                    freeze(grain)
+                    recycleGrainIfNeeded(grain)
+                }
+            } else {
+                grain.restTime = 0
+            }
+        }
+    }
+    
+    func freeze(_ grain: SandGrain) {
+        grain.isFrozen = true
+        grain.physicsBody?.isDynamic = false
+        grain.physicsBody?.velocity = .zero
+        grain.physicsBody?.angularVelocity = 0
+    }
+    
+    func wakeAllSand() {
+        for case let grain as SandGrain in sandNode.children {
+            grain.isFrozen = false
+            grain.restTime = 0
+            grain.physicsBody?.isDynamic = true
+        }
+    }
+
     func rebuildHourglass() {
         hourglassNode?.removeFromParent()
         outlineNode?.removeFromParent()
@@ -81,28 +144,36 @@ class HourglassScene: SKScene {
 
         let initPath = hourglass.hourglassPath(in: hourglassSize, shape: hourglass)
         let path = hourglass.centeredPath(initPath)
+        
+        print("hourglass size: \(hourglassSize)")
 
-        // Physics boundary
         let boundary = SKNode()
         boundary.physicsBody = SKPhysicsBody(edgeLoopFrom: path)
         boundary.physicsBody?.isDynamic = false
-        boundary.physicsBody?.friction = 0.6
+        boundary.physicsBody?.friction = 0.1
         boundary.position = .zero
         worldNode.addChild(boundary)
 
-        // Visual outline (optional)
         let outline = SKShapeNode(path: path)
+        outline.physicsBody = SKPhysicsBody(edgeLoopFrom: path)
+        outline.physicsBody?.isDynamic = false
+        outline.physicsBody?.friction = 0.1
         outline.strokeColor = .white
         outline.lineWidth = 2
         outline.fillColor = .clear
-        boundary.position = .zero
+        outline.position = .zero
         worldNode.addChild(outline)
 
         hourglassNode = boundary
         outlineNode = outline
+        
+        print("hourglass frame: \(outlineNode?.calculateAccumulatedFrame())")
     }
     
     func flipHourglass(duration: TimeInterval = 0.8) {
+        wakeAllSand()
+        startEmittingSand()
+        
         let startAngle = worldNode.zRotation
         let endAngle = startAngle + .pi
 
@@ -114,22 +185,6 @@ class HourglassScene: SKScene {
         rotate.timingMode = .easeInEaseOut
 
         worldNode.run(rotate)
-//
-//        // Animate gravity in sync
-//        let gravityMagnitude = physicsWorld.gravity.dy.magnitude
-//
-//        let steps = 60
-//        for i in 0...steps {
-//            let t = CGFloat(i) / CGFloat(steps)
-//            let angle = startAngle + (.pi * t)
-//
-//            DispatchQueue.main.asyncAfter(
-//                deadline: .now() + duration * Double(t)
-//            ) {
-//                self.physicsWorld.gravity =
-//                    self.gravityVector(for: angle, magnitude: gravityMagnitude)
-//            }
-//        }
     }
     
     func setSandDamping(_ value: CGFloat) {
@@ -143,21 +198,21 @@ class HourglassScene: SKScene {
     
     func sandSpawnPosition() -> CGPoint {
         let xRange: ClosedRange<CGFloat> = -20...20
-        let y: CGFloat = size.height * 0.35
+        let y: CGFloat = size.height * 0.15
         let point = CGPoint(
             x: CGFloat.random(in: xRange),
             y: y
         )
-        print("spawning at \(point)")
         return point
     }
     
     func startEmittingSand(rate: Double = 120) {
+        elapsedTime = 0.0
         isEmittingSand = true
 
         sandTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / rate, repeats: true) { _ in
             guard self.isEmittingSand else { return }
-            self.spawnSandGrain()
+            guard self.elapsedTime < self.timerDuration else { self.stopEmittingSand(); return }
         }
     }
     
@@ -167,14 +222,27 @@ class HourglassScene: SKScene {
         sandTimer = nil
     }
     
-    func spawnSandGrain() {
-        guard sandNode.children.count < 1200 else { return }
-        
-        let radius = CGFloat.random(in: 8.0...10.0)
-        let grain = SandGrain(radius: radius)
-        
-        grain.position = sandSpawnPosition()
-        sandNode.addChild(grain)
+    func recycleGrainIfNeeded(_ grain: SandGrain) {
+        guard isEmittingSand else { return }
+        guard elapsedTime < recycleCutoff else { return }
+        guard grain.isFrozen else { return }
+        guard grain.position.y < recycleY else { return }
+
+        respawn(grain)
+    }
+    
+    func respawn(_ grain: SandGrain) {
+        grain.isFrozen = false
+        grain.restTime = 0
+
+        let x = CGFloat.random(in: spawnXRange)
+        let y = CGFloat.random(in: spawnYRange)
+
+        grain.position = CGPoint(x: x, y: y)
+
+        grain.physicsBody?.isDynamic = true
+        grain.physicsBody?.velocity = .zero
+        grain.physicsBody?.angularVelocity = 0
     }
     
     func cleanupSand() {
@@ -193,12 +261,10 @@ class HourglassScene: SKScene {
         sandNode.removeAllChildren()
 
         for _ in 0..<count {
-            let radius = CGFloat.random(in: 2.0...2.6)
+            let radius = CGFloat.random(in: outlineNode!.frame.maxX * 0.015 ... outlineNode!.frame.maxX * 0.02)
             let grain = SandGrain(radius: radius)
             grain.position = bottomChamberSpawnPosition()
             sandNode.addChild(grain)
         }
-        
-        print("created \(sandNode.children.count) sand grains")
     }
 }
